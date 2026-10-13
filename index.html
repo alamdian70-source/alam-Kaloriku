@@ -123,7 +123,12 @@ svg.chart{width:100%;min-width:300px;height:auto;display:block}
 .grid{stroke:var(--line);stroke-width:1}
 .foot{margin-top:24px;font-size:12.5px;color:var(--muted)}
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
-.sheet{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,560px);max-height:88%;overflow:auto;background:var(--surface);color:var(--fg);border-radius:14px 14px 0 0;z-index:21;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));border:1px solid var(--line)}
+.sheet{position:fixed;left:50%;top:max(12px,env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(calc(100% - 24px),560px);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;overflow:auto;background:var(--surface);color:var(--fg);border-radius:14px;z-index:21;padding:16px;border:1px solid var(--line)}
+.sheet>*{flex:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--fg)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.tg{color:var(--accent);font-weight:600}
 .sheet .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .sheet .hd h2{font-size:19px}
 .seg{display:flex;gap:6px;margin-bottom:12px}
@@ -132,7 +137,7 @@ svg.chart{width:100%;min-width:300px;height:auto;display:block}
 .food:hover{background:var(--surface2)}
 .food span:first-child{min-width:0}
 .food b{font-weight:600;display:block}
-#flist{max-height:34vh;overflow:auto;margin-top:8px}
+#flist{flex:1 1 0!important;min-height:130px;overflow:auto;margin-top:8px}
 .selbox{background:var(--accent-soft);border-radius:8px;padding:12px;display:grid;gap:8px;margin-top:10px}
 .pad{padding:8px 4px}
 .card h2,.datebar .d{color:var(--blue)}
@@ -243,10 +248,26 @@ var FOODS=[
 ['Tahu isi','1 buah',110,3,10,6],['Kacang tanah','30 g',170,7.5,5,14],
 ['Keju cheddar','1 slice (20 g)',80,5,0.5,6.5],['Minyak goreng','1 sdm',120,0,0,14],
 ['Gula pasir','1 sdt',16,0,4,0],['Sambal','1 sdm',20,0.5,3,1],
-['Salad sayur + dressing','1 porsi',120,3,10,8],['Tuna kaleng (air)','1/2 kaleng (70 g)',70,16,0,0.5]
+['Salad sayur + dressing','1 porsi',120,3,10,8],['Tuna kaleng (air)','1/2 kaleng (70 g)',70,16,0,0.5],
+['Nasi ponggol','1 bungkus',400,12,55,14,'Khas Tegal'],
+['Nasi lengko','1 piring',520,17,68,20,'Khas Tegal'],
+['Tempe mendoan','1 potong',110,4.5,9,6.5,'Khas Tegal'],
+['Tahu aci goreng','1 buah',100,3,12,4.5,'Khas Tegal'],
+['Sate blengong','10 tusuk + bumbu',380,27,12,25,'Khas Tegal'],
+['Soto tauco Tegal','1 mangkuk (tanpa nasi)',300,18,22,15,'Khas Tegal'],
+['Kupat glabed','1 porsi',450,12,52,22,'Khas Tegal'],
+['Teh poci gula batu','1 gelas',45,0,11,0,'Khas Tegal'],
+['Telur asin (khas Brebes)','1 butir',130,9,1,10,'Khas Tegal'],
+['Orek tempe','1 porsi (50 g)',150,7,12,8,'Khas Tegal'],
+['Telur balado','1 butir + sambal',150,7,4,11,'Khas Tegal'],
+['Sayur lodeh','1 mangkuk',180,4,15,12,'Khas Tegal'],
+['Tumis kangkung','1 porsi',90,3,6,6,'Khas Tegal'],
+['Ikan asin goreng','1 potong',90,12,0,4,'Khas Tegal'],
+['Kerupuk','1 buah',35,0.5,6,1,'Khas Tegal']
 ];
 
 /* m = persentase kalori [protein, karbo, lemak]; eat = jam jendela makan; fast = jam puasa */
+var KW={'Tempe goreng':'gorengan','Bakwan sayur':'gorengan bakwan','Tahu goreng':'gorengan','Tahu isi':'gorengan','Pisang goreng':'gorengan','Tempe mendoan':'gorengan','Tahu aci goreng':'gorengan'};
 var PROGRAMS={
  classic:{name:'Defisit Kalori',tag:'Dasar',pat:'3 kali makan + camilan',eat:0,fast:0,m:[25,45,30],
   desc:'Makan seperti biasa, tetapi total kalori harian di bawah kebutuhan tubuh. Paling fleksibel dan cocok untuk pemula.',
@@ -537,7 +558,9 @@ function renderSheet(){
   if(!el){el=document.createElement('div');el.id='sheet';document.body.appendChild(el)}
   var body;
   if(sheet.mode==='search'){
-    body='<label>Cari makanan<input id="fq" type="search" placeholder="Contoh: nasi, tempe, pisang" autocomplete="off"></label><div id="fsel"></div><ul class="list" id="flist"></ul>';
+    body='<label>Cari makanan<input id="fq" type="search" placeholder="Contoh: lengko, mendoan, gorengan" autocomplete="off"></label>'+
+      '<div class="chips" role="group" aria-label="Saring makanan"><button type="button" class="chip" data-act="flt" data-v="" aria-pressed="'+(!sheet.flt)+'">Semua</button><button type="button" class="chip" data-act="flt" data-v="tegal" aria-pressed="'+(sheet.flt==='tegal')+'">Khas Tegal</button><button type="button" class="chip" data-act="flt" data-v="gorengan" aria-pressed="'+(sheet.flt==='gorengan')+'">Gorengan</button></div>'+
+      '<div id="fsel"></div><ul class="list" id="flist"></ul><small style="margin-top:8px">Makanan khas Tegal berisi nilai perkiraan. Porsi tiap penjual bisa berbeda, sesuaikan jumlah porsinya.</small>';
   }else{
     body='<div class="form"><label class="full">Nama makanan<input id="cn" type="text" autocomplete="off"></label>'+
       '<label>Kalori (kkal)<input id="ck" type="number" inputmode="decimal" min="0"></label><label>Protein (g)<input id="cp" type="number" inputmode="decimal" min="0"></label>'+
@@ -550,9 +573,14 @@ function renderSheet(){
   if(sheet.mode==='search'){drawList();drawSel();var q=$('#fq');if(q)q.focus()}else{var n=$('#cn');if(n)n.focus()}
 }
 function drawList(){
-  var q=(($('#fq')||{}).value||'').toLowerCase().trim();
-  var rows=[];
-  allFoods().forEach(function(f,i){if(!q||f[0].toLowerCase().indexOf(q)>-1)rows.push('<li><button type="button" class="food" data-act="pick" data-v="'+i+'"><span><b>'+esc(f[0])+'</b><small>'+esc(f[1])+'</small></span><span class="k">'+f[2]+' kkal</span></button></li>')});
+  var q=(($('#fq')||{}).value||'').toLowerCase().trim(),fl=sheet.flt||'',rows=[];
+  allFoods().forEach(function(f,i){
+    var hay=(f[0]+' '+(KW[f[0]]||'')+' '+(f[6]||'')).toLowerCase();
+    if(fl==='tegal'&&f[6]!=='Khas Tegal')return;
+    if(fl==='gorengan'&&hay.indexOf('gorengan')<0)return;
+    if(q&&hay.indexOf(q)<0)return;
+    rows.push('<li><button type="button" class="food" data-act="pick" data-v="'+i+'"><span><b>'+esc(f[0])+'</b><small>'+esc(f[1])+(f[6]?' · <span class="tg">'+esc(f[6])+'</span>':'')+'</small></span><span class="k">'+f[2]+' kkal</span></button></li>');
+  });
   $('#flist').innerHTML=rows.length?rows.join(''):'<li class="muted pad">Tidak ditemukan. Coba tab Buat sendiri.</li>';
 }
 function drawSel(){
@@ -583,6 +611,7 @@ document.addEventListener('click',function(e){
   else if(a==='openAdd'){sheet={meal:v,mode:'search',sel:null};renderSheet()}
   else if(a==='closeSheet'){sheet=null;renderSheet()}
   else if(a==='mode'){sheet.mode=v;sheet.sel=null;renderSheet()}
+  else if(a==='flt'){sheet.flt=v;document.querySelectorAll('.chip').forEach(function(c){c.setAttribute('aria-pressed',String(c.dataset.v===v))});drawList()}
   else if(a==='pick'){sheet.sel=Number(v);drawSel();var q=$('#fqty');if(q){q.focus();q.select()}}
   else if(a==='addSel'){var qty=Number($('#fqty').value);if(!(qty>0))return;pushEntry(entryOf(allFoods()[sheet.sel],qty,sheet.meal))}
   else if(a==='addCustom'){
